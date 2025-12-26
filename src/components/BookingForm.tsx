@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { Send, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { SITE_CONFIG } from "@/lib/config";
 
 type BookingFormData = {
     fullName: string;
@@ -25,19 +26,49 @@ export default function BookingForm() {
     const onSubmit = async (data: BookingFormData) => {
         setIsSubmitting(true);
 
-        // Simulate network delay for "sending email"
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        try {
+            // 1. Send Email via EmailJS
+            const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
+            const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID;
+            const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
 
-        // Construct WhatsApp Message
-        const message = `*New Booking Request*%0A%0A*Name:* ${data.fullName}%0A*Phone:* ${data.phone}%0A*From:* ${data.pickup}%0A*To:* ${data.destination}%0A*Date:* ${data.date || "Not specified"}%0A*Notes:* ${data.notes || "None"}`;
+            if (serviceId && templateId && publicKey) {
+                // eslint-disable-next-line @typescript-eslint/no-var-requires
+                const emailjs = await import("@emailjs/browser");
 
-        // WhatsApp URL (Use a placeholder number for now)
-        const whatsappUrl = `https://wa.me/234XXXXXXXXXX?text=${message}`;
+                await emailjs.default.send(
+                    serviceId,
+                    templateId,
+                    {
+                        to_email: SITE_CONFIG.email,
+                        from_name: data.fullName,
+                        from_phone: data.phone,
+                        pickup: data.pickup,
+                        destination: data.destination,
+                        travel_date: data.date || "Not specified",
+                        message: data.notes || "None",
+                    },
+                    publicKey
+                );
+            } else {
+                console.warn("EmailJS credentials not found. Skipping email send.");
+            }
 
-        // Open WhatsApp
-        window.open(whatsappUrl, "_blank");
+            // 2. Open WhatsApp (Redundancy)
+            const message = `*New Booking Request*%0A%0A*Name:* ${data.fullName}%0A*Phone:* ${data.phone}%0A*From:* ${data.pickup}%0A*To:* ${data.destination}%0A*Date:* ${data.date || "Not specified"}%0A*Notes:* ${data.notes || "None"}`;
+            const whatsappUrl = `https://wa.me/${SITE_CONFIG.whatsappNumber}?text=${message}`;
+            window.open(whatsappUrl, "_blank");
 
-        setIsSubmitting(false);
+        } catch (error) {
+            console.error("Failed to send booking request:", error);
+            alert("Something went wrong via email. Opening WhatsApp instead.");
+            // Fallback
+            const message = `*New Booking Request*%0A%0A*Name:* ${data.fullName}%0A*Phone:* ${data.phone}%0A*From:* ${data.pickup}%0A*To:* ${data.destination}%0A*Date:* ${data.date || "Not specified"}%0A*Notes:* ${data.notes || "None"}`;
+            const whatsappUrl = `https://wa.me/${SITE_CONFIG.whatsappNumber}?text=${message}`;
+            window.open(whatsappUrl, "_blank");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (

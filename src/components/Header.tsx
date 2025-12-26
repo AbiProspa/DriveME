@@ -1,6 +1,7 @@
 import { Phone, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { SITE_CONFIG } from "@/lib/config";
 
 export default function Header() {
     return (
@@ -11,13 +12,13 @@ export default function Header() {
                         D
                     </div>
                     <span className="text-xl font-bold text-slate-900 tracking-tight">
-                        DriveMe
+                        {SITE_CONFIG.name}
                     </span>
                 </Link>
 
                 <div className="flex items-center gap-4">
                     <a
-                        href="https://wa.me/234XXXXXXXXXX" // TODO: Add real number
+                        href={`https://wa.me/${SITE_CONFIG.whatsappNumber}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hidden sm:flex items-center gap-2 text-slate-600 hover:text-green-600 transition-colors text-sm font-medium"
