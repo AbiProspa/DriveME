@@ -9,7 +9,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "DriveMe - Reliable Interstate Driving",
+  title: "Max-DriveMe - Reliable Interstate Driving",
   description: "Safe, comfortable, and professional interstate trips. Book a driver in minutes.",
 };
 

@@ -1,71 +1,99 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Send, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SITE_CONFIG } from "@/lib/config";
+import {
+    BookingRequest,
+    getTodayDateInputValue,
+    normalizeBookingInput,
+    validateBookingInput,
+} from "@/lib/booking";
 
-type BookingFormData = {
-    fullName: string;
-    phone: string;
-    pickup: string;
-    destination: string;
-    date: string; // Optional
-    notes: string; // Optional
-};
+type SubmissionState = "idle" | "success" | "error";
 
 export default function BookingForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
+    const [submissionMessage, setSubmissionMessage] = useState("");
+    const minDate = useMemo(() => getTodayDateInputValue(), []);
+
     const {
         register,
         handleSubmit,
+        reset,
+        setError,
+        clearErrors,
         formState: { errors },
-    } = useForm<BookingFormData>();
+    } = useForm<BookingRequest>({
+        mode: "onBlur",
+    });
 
-    const onSubmit = async (data: BookingFormData) => {
+    const onSubmit = async (formData: BookingRequest) => {
+        setSubmissionState("idle");
+        setSubmissionMessage("");
+        clearErrors();
+
+        const normalizedData = normalizeBookingInput(formData);
+        const clientValidation = validateBookingInput(normalizedData);
+
+        if (!clientValidation.isValid) {
+            Object.entries(clientValidation.errors).forEach(([field, message]) => {
+                if (message) {
+                    setError(field as keyof BookingRequest, { type: "manual", message });
+                }
+            });
+
+            setSubmissionState("error");
+            setSubmissionMessage("Please fix the highlighted fields and submit again.");
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
-            // 1. Send Email via EmailJS
-            const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
-            const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID;
-            const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
+            const response = await fetch("/api/bookings", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(normalizedData),
+            });
 
-            if (serviceId && templateId && publicKey) {
-                // eslint-disable-next-line @typescript-eslint/no-var-requires
-                const emailjs = await import("@emailjs/browser");
+            const payload = (await response.json().catch(() => null)) as
+                | {
+                    message?: string;
+                    errors?: Partial<Record<keyof BookingRequest, string>>;
+                }
+                | null;
 
-                await emailjs.default.send(
-                    serviceId,
-                    templateId,
-                    {
-                        to_email: SITE_CONFIG.email,
-                        from_name: data.fullName,
-                        from_phone: data.phone,
-                        pickup: data.pickup,
-                        destination: data.destination,
-                        travel_date: data.date || "Not specified",
-                        message: data.notes || "None",
-                    },
-                    publicKey
+            if (!response.ok) {
+                if (payload?.errors) {
+                    Object.entries(payload.errors).forEach(([field, message]) => {
+                        if (message) {
+                            setError(field as keyof BookingRequest, { type: "server", message });
+                        }
+                    });
+                }
+
+                setSubmissionState("error");
+                setSubmissionMessage(
+                    payload?.message ?? "Unable to submit your request right now. Please try again."
                 );
-            } else {
-                console.warn("EmailJS credentials not found. Skipping email send.");
+                return;
             }
 
-            // 2. Open WhatsApp (Redundancy)
-            const message = `*New Booking Request*%0A%0A*Name:* ${data.fullName}%0A*Phone:* ${data.phone}%0A*From:* ${data.pickup}%0A*To:* ${data.destination}%0A*Date:* ${data.date || "Not specified"}%0A*Notes:* ${data.notes || "None"}`;
-            const whatsappUrl = `https://wa.me/${SITE_CONFIG.whatsappNumber}?text=${message}`;
-            window.open(whatsappUrl, "_blank");
-
+            reset();
+            setSubmissionState("success");
+            setSubmissionMessage(
+                payload?.message ??
+                "Thanks. Your request has been submitted successfully and our team will contact you shortly."
+            );
         } catch (error) {
-            console.error("Failed to send booking request:", error);
-            alert("Something went wrong via email. Opening WhatsApp instead.");
-            // Fallback
-            const message = `*New Booking Request*%0A%0A*Name:* ${data.fullName}%0A*Phone:* ${data.phone}%0A*From:* ${data.pickup}%0A*To:* ${data.destination}%0A*Date:* ${data.date || "Not specified"}%0A*Notes:* ${data.notes || "None"}`;
-            const whatsappUrl = `https://wa.me/${SITE_CONFIG.whatsappNumber}?text=${message}`;
-            window.open(whatsappUrl, "_blank");
+            console.error("Booking request failed:", error);
+            setSubmissionState("error");
+            setSubmissionMessage("Unable to submit your request right now. Please try again.");
         } finally {
             setIsSubmitting(false);
         }
@@ -73,12 +101,10 @@ export default function BookingForm() {
 
     return (
         <section id="booking" className="py-20 bg-slate-900 text-white relative overflow-hidden">
-            {/* Background Decor */}
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-slate-950 opacity-50 z-0"></div>
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-slate-950 opacity-50 z-0" />
 
             <div className="container mx-auto px-4 relative z-10">
                 <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-
                     <div>
                         <span className="text-emerald-400 font-semibold tracking-wide uppercase text-sm mb-2 block">
                             Book Your Trip
@@ -87,85 +113,139 @@ export default function BookingForm() {
                             Ready to Hit the Road?
                         </h2>
                         <p className="text-slate-300 mb-8 text-lg leading-relaxed">
-                            Fill out the form to request a driver. We'll review your details and get back to you immediately to confirm the trip.
+                            Fill out the form to request a driver. We&apos;ll review your details and get back to you
+                            quickly to confirm the trip.
                         </p>
                         <ul className="space-y-4 text-slate-300">
                             <li className="flex items-center gap-3">
-                                <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                                <div className="w-2 h-2 rounded-full bg-emerald-400" />
                                 <span>No payment required now</span>
                             </li>
                             <li className="flex items-center gap-3">
-                                <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                                <span>Instant WhatsApp confirmation</span>
+                                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                                <span>Fast booking confirmation</span>
                             </li>
                             <li className="flex items-center gap-3">
-                                <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                                <div className="w-2 h-2 rounded-full bg-emerald-400" />
                                 <span>Professional verified drivers</span>
                             </li>
                         </ul>
                     </div>
 
                     <div className="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl">
-                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                                <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 mb-1">
+                                    Full Name
+                                </label>
                                 <input
-                                    {...register("fullName", { required: "Name is required" })}
+                                    id="fullName"
+                                    {...register("fullName")}
                                     className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
                                     placeholder="John Doe"
+                                    autoComplete="name"
                                 />
-                                {errors.fullName && <span className="text-red-500 text-xs mt-1">{errors.fullName.message}</span>}
+                                {errors.fullName && (
+                                    <span className="text-red-600 text-xs mt-1 block">{errors.fullName.message}</span>
+                                )}
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                                <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-1">
+                                    Phone Number
+                                </label>
                                 <input
-                                    {...register("phone", { required: "Phone number is required" })}
+                                    id="phone"
+                                    {...register("phone")}
                                     className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
                                     placeholder="+234..."
+                                    autoComplete="tel"
+                                    inputMode="tel"
                                 />
-                                {errors.phone && <span className="text-red-500 text-xs mt-1">{errors.phone.message}</span>}
+                                {errors.phone && (
+                                    <span className="text-red-600 text-xs mt-1 block">{errors.phone.message}</span>
+                                )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Pickup Location</label>
+                                    <label htmlFor="pickup" className="block text-sm font-medium text-slate-700 mb-1">
+                                        Pickup Location
+                                    </label>
                                     <input
-                                        {...register("pickup", { required: "Pickup is required" })}
+                                        id="pickup"
+                                        {...register("pickup")}
                                         className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
                                         placeholder="Lagos"
+                                        autoComplete="address-level2"
                                     />
-                                    {errors.pickup && <span className="text-red-500 text-xs mt-1">{errors.pickup.message}</span>}
+                                    {errors.pickup && (
+                                        <span className="text-red-600 text-xs mt-1 block">{errors.pickup.message}</span>
+                                    )}
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Destination</label>
+                                    <label htmlFor="destination" className="block text-sm font-medium text-slate-700 mb-1">
+                                        Destination
+                                    </label>
                                     <input
-                                        {...register("destination", { required: "Destination is required" })}
+                                        id="destination"
+                                        {...register("destination")}
                                         className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
                                         placeholder="Abuja"
+                                        autoComplete="address-level1"
                                     />
-                                    {errors.destination && <span className="text-red-500 text-xs mt-1">{errors.destination.message}</span>}
+                                    {errors.destination && (
+                                        <span className="text-red-600 text-xs mt-1 block">{errors.destination.message}</span>
+                                    )}
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Travel Date <span className="text-slate-400 font-normal">(Optional)</span></label>
+                                <label htmlFor="date" className="block text-sm font-medium text-slate-700 mb-1">
+                                    Travel Date
+                                </label>
                                 <input
+                                    id="date"
                                     type="date"
+                                    min={minDate}
                                     {...register("date")}
                                     className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
                                 />
+                                {errors.date && (
+                                    <span className="text-red-600 text-xs mt-1 block">{errors.date.message}</span>
+                                )}
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Additional Notes <span className="text-slate-400 font-normal">(Optional)</span></label>
+                                <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">
+                                    Additional Notes <span className="text-slate-400 font-normal">(Optional)</span>
+                                </label>
                                 <textarea
+                                    id="notes"
                                     {...register("notes")}
                                     className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all h-24 resize-none"
                                     placeholder="Any special requests?"
-                                ></textarea>
+                                    maxLength={500}
+                                />
+                                {errors.notes && (
+                                    <span className="text-red-600 text-xs mt-1 block">{errors.notes.message}</span>
+                                )}
                             </div>
+
+                            {submissionState !== "idle" && (
+                                <p
+                                    role="status"
+                                    aria-live="polite"
+                                    className={cn(
+                                        "rounded-lg px-3 py-2 text-sm",
+                                        submissionState === "success"
+                                            ? "bg-emerald-100 text-emerald-900"
+                                            : "bg-red-100 text-red-900"
+                                    )}
+                                >
+                                    {submissionMessage}
+                                </p>
+                            )}
 
                             <button
                                 type="submit"
@@ -189,7 +269,7 @@ export default function BookingForm() {
                             </button>
 
                             <p className="text-xs text-center text-slate-500 mt-4">
-                                By clicking Request, you agree to being contacted via WhatsApp or Phone.
+                                By clicking Request, you agree to being contacted by the Max-DriveMe team.
                             </p>
                         </form>
                     </div>
