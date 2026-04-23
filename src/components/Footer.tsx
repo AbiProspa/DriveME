@@ -8,11 +8,11 @@ export default function Footer() {
             <div className="container mx-auto px-4">
                 <div className="grid md:grid-cols-3 gap-8 mb-8">
                     <div>
-                        <Link href="/" className="flex items-center gap-2 mb-4">
-                            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-slate-900 font-bold">
+                        <Link href="/" className="flex items-center gap-2 mb-4 flex-shrink-0">
+                            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-slate-900 font-bold flex-shrink-0">
                                 M
                             </div>
-                            <span className="text-xl font-bold text-white tracking-tight">
+                            <span className="text-xl font-bold text-white tracking-tight whitespace-nowrap">
                                 Max-DriveMe
                             </span>
                         </Link>
