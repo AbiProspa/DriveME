@@ -151,6 +151,23 @@ export default function BookingForm() {
                             </div>
 
                             <div>
+                                <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
+                                    Email Address
+                                </label>
+                                <input
+                                    id="email"
+                                    type="email"
+                                    {...register("email")}
+                                    className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
+                                    placeholder="john@example.com"
+                                    autoComplete="email"
+                                />
+                                {errors.email && (
+                                    <span className="text-red-600 text-xs mt-1 block">{errors.email.message}</span>
+                                )}
+                            </div>
+
+                            <div>
                                 <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-1">
                                     Phone Number
                                 </label>
@@ -251,7 +268,7 @@ export default function BookingForm() {
                                 type="submit"
                                 disabled={isSubmitting}
                                 className={cn(
-                                    "w-full bg-blue-600 text-white py-4 rounded-lg font-bold text-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2",
+                                    "w-full bg-blue-600 text-white py-4 rounded-lg font-bold text-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 cursor-pointer",
                                     isSubmitting && "opacity-75 cursor-not-allowed"
                                 )}
                             >

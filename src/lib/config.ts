@@ -1,5 +1,5 @@
 export const SITE_CONFIG = {
     name: "Max-DriveMe",
-    whatsappNumber: "2347039157861",
-    email: "web3oracu@gmail.com",
+    whatsappNumber: "2348037383700",
+    email: "sogalmd@gmail.com",
 };

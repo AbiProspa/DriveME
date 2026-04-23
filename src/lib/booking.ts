@@ -1,5 +1,6 @@
 export type BookingRequest = {
     fullName: string;
+    email: string;
     phone: string;
     pickup: string;
     destination: string;
@@ -19,6 +20,7 @@ export function normalizeBookingInput(payload: unknown): BookingRequest {
 
     return {
         fullName: input.fullName?.trim() ?? "",
+        email: input.email?.trim() ?? "",
         phone: input.phone?.trim() ?? "",
         pickup: input.pickup?.trim() ?? "",
         destination: input.destination?.trim() ?? "",
@@ -34,6 +36,12 @@ export function validateBookingInput(input: BookingRequest): BookingValidationRe
         errors.fullName = "Full name is required.";
     } else if (input.fullName.length < 2) {
         errors.fullName = "Full name must be at least 2 characters.";
+    }
+
+    if (!input.email) {
+        errors.email = "Email address is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {
+        errors.email = "Enter a valid email address.";
     }
 
     if (!input.phone) {
