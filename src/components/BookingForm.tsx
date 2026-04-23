@@ -279,7 +279,7 @@ export default function BookingForm() {
                                     </>
                                 ) : (
                                     <>
-                                        Request a Driver
+                                        Request a Driver/Ride
                                         <Send className="w-5 h-5" />
                                     </>
                                 )}

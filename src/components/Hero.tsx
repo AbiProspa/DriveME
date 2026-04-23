@@ -30,7 +30,7 @@ export default function Hero() {
                                 href="#booking"
                                 className="w-full sm:w-auto px-8 py-4 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 group shadow-lg shadow-slate-900/10"
                             >
-                                Request a Driver
+                                Request a Driver/Ride
                                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                             </Link>
                             <a

@@ -34,7 +34,7 @@ export default function Header() {
                         )}
                     >
                         <Phone className="w-4 h-4" />
-                        <span>Book a Driver</span>
+                        <span>Book a Driver/Ride</span>
                     </a>
                 </div>
             </div>
